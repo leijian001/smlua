@@ -8,13 +8,44 @@ local SM_EXIT_SIG  = -3;
 local SM_INIT_SIG  = -2;
 local SM_USER_SIG  = -1;
 
+local function IS_EMPTY_SIG(self)
+    return self.sig == SM_EMPTY_SIG;
+end
+local function IS_ENTRY_SIG(self)
+    return self.sig == SM_ENTRY_SIG;
+end
+local function IS_EXIT_SIG(self)
+    return self.sig == SM_EXIT_SIG;
+end
+local function IS_INIT_SIG(self)
+    return self.sig == SM_INIT_SIG;
+end
+local function IS_USER_SIG(self)
+    return self.sig >= SM_USER_SIG;
+end
+
+function sm_event_new( s, e )
+    local event = {};
+
+    event.sig = s;
+    event.event = e;
+
+    event.is_empty_sig = IS_EMPTY_SIG;
+    event.is_entry_sig = IS_ENTRY_SIG;
+    event.is_exit_sig  = IS_EXIT_SIG;
+    event.is_init_sig  = IS_INIT_SIG;
+    event.is_user_sig  = IS_USER_SIG;
+
+    return event;
+end
+
 local sm_reserved_event =
 {
-	[SM_EMPTY_SIG] = { sig = SM_EMPTY_SIG, event = nil },
-	[SM_ENTRY_SIG] = { sig = SM_ENTRY_SIG, event = nil },
-	[SM_EXIT_SIG]  = { sig = SM_EXIT_SIG , event = nil },
-	[SM_INIT_SIG]  = { sig = SM_INIT_SIG , event = nil },
-	[SM_USER_SIG]  = { sig = SM_USER_SIG , event = nil },
+	[SM_EMPTY_SIG] = { sig = SM_EMPTY_SIG, event = nil, is_empty_sig = IS_EMPTY_SIG, is_entry_sig = IS_ENTRY_SIG, is_exit_sig  = IS_EXIT_SIG, is_init_sig  = IS_INIT_SIG, is_user_sig  = IS_USER_SIG },
+	[SM_ENTRY_SIG] = { sig = SM_ENTRY_SIG, event = nil, is_empty_sig = IS_EMPTY_SIG, is_entry_sig = IS_ENTRY_SIG, is_exit_sig  = IS_EXIT_SIG, is_init_sig  = IS_INIT_SIG, is_user_sig  = IS_USER_SIG },
+	[SM_EXIT_SIG]  = { sig = SM_EXIT_SIG,  event = nil, is_empty_sig = IS_EMPTY_SIG, is_entry_sig = IS_ENTRY_SIG, is_exit_sig  = IS_EXIT_SIG, is_init_sig  = IS_INIT_SIG, is_user_sig  = IS_USER_SIG },
+	[SM_INIT_SIG]  = { sig = SM_INIT_SIG,  event = nil, is_empty_sig = IS_EMPTY_SIG, is_entry_sig = IS_ENTRY_SIG, is_exit_sig  = IS_EXIT_SIG, is_init_sig  = IS_INIT_SIG, is_user_sig  = IS_USER_SIG },
+	[SM_USER_SIG]  = { sig = SM_USER_SIG,  event = nil, is_empty_sig = IS_EMPTY_SIG, is_entry_sig = IS_ENTRY_SIG, is_exit_sig  = IS_EXIT_SIG, is_init_sig  = IS_INIT_SIG, is_user_sig  = IS_USER_SIG },
 };
 
 local function SM_TRIG(me, state, sig)
@@ -29,24 +60,6 @@ local function SM_EXIT(me, state)
 	return SM_TRIG(me, state, SM_EXIT_SIG);
 end
 
------------------------------------
--- Export
-function IS_EMPTY_SIG(sig)
-	return sig == SM_EMPTY_SIG;
-end
-function IS_ENTRY_SIG(sig)
-	return sig == SM_ENTRY_SIG;
-end
-function IS_EXIT_SIG(sig)
-	return sig == SM_EXIT_SIG;
-end
-function IS_INIT_SIG(sig)
-	return sig == SM_INIT_SIG;
-end
-function IS_USER_SIG(sig)
-	return sig >= SM_USER_SIG;
-end
-
 --------------------------------------------------------------------------------
 
 local SM_RET_HANDLED   = 0;
@@ -56,21 +69,21 @@ local SM_RET_TRAN      = 3;
 local SM_RET_SUPER     = 4;
 
 -- Export
-function SM_HANDLED()
+local function SM_HANDLED(self)
 	return SM_RET_HANDLED;
 end
-function SM_IGNORE()
+local function SM_IGNORE(self)
 	return SM_RET_IGNORE;
 end
-function SM_UNHANDLED()
+local function SM_UNHANDLED(self)
 	return SM_RET_UNHANDLED;
 end
-function SM_TRAN(me, target)
-	me.temp = target;
+local function SM_TRAN(self, target)
+	self.temp = target;
 	return SM_RET_TRAN;
 end
-function SM_SUPER(me, super)
-	me.temp = super;
+local function SM_SUPER(self, super)
+	self.temp = super;
 	return SM_RET_SUPER;
 end
 
@@ -83,15 +96,6 @@ local function sm_new(s, t)
 	sm.temp  = t;
 
 	return sm;
-end
-
-function sm_event_new( s, e )
-	local event = {};
-
-	event.sig = s;
-	event.event = e;
-
-	return event;
 end
 
 --------------------------------------------------------------------------------
@@ -262,7 +266,7 @@ local function hsm_init(self, e)
 		until ip < 0;
 
 		t = path[0];
-	until SMTRIG(self, t, SM_INIT_SIG) ~= SM_RET_TRAN;
+	until SM_TRIG(self, t, SM_INIT_SIG) ~= SM_RET_TRAN;
 
 	self.temp = t;
 	self.state = self.temp;
@@ -332,7 +336,7 @@ local function hsm_dispatch(self, e)
 	self.state = t;
 end
 
-local function hsm_top(self, e)
+function hsm_top(self, e)
 	return SM_IGNORE();
 end
 
@@ -341,6 +345,12 @@ function hsm_new(init)
 
 	hsm.init = hsm_init;
 	hsm.dispatch = hsm_dispatch;
+
+    hsm.handled = SM_HANDLED;
+    hsm.ignore  = SM_IGNORE;
+    hsm.unhandled = SM_UNHANDLED;
+    hsm.tran    = SM_TRAN;
+    hsm.super   = SM_SUPER;
 
 	return hsm;
 end
